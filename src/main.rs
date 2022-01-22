@@ -1,6 +1,7 @@
 use sqlx::postgres::PgPoolOptions;
 mod db_services;
-use db_services::mandants::insert_mandant;
+
+use crate::db_services::mandants::Mandant;
 
 //#[actix_web::main]
 #[tokio::main]
@@ -10,9 +11,15 @@ async fn main() -> Result<(), sqlx::Error> {
         .max_connections(5)
         .connect("postgres://doerig:doerig@127.0.2.15/nestbox")
         .await?;
-    for _i in 0..5 {
-        let _mandant = insert_mandant(&pool).await?;
-        println!("{}", _mandant);
+    for i in 0..5 {
+        let mut mandant = Mandant::new(
+            String::from(""),
+            format!("association {}", i),
+            format!("website {}", i),
+            format!("email {}", i),
+        );
+        mandant.insert(&pool).await;
+        println!("{}", mandant);
     }
     Ok(())
 }
