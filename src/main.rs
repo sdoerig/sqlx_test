@@ -11,6 +11,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .max_connections(5)
         .connect("postgres://doerig:doerig@127.0.2.15/nestbox")
         .await?;
+    let mut uuids: Vec<String> = Vec::new();
     for i in 0..5 {
         let mut mandant = Mandant::new(
             String::from(""),
@@ -19,6 +20,12 @@ async fn main() -> Result<(), sqlx::Error> {
             format!("email {}", i),
         );
         mandant.insert(&pool).await;
+        uuids.push(mandant.id.clone());
+        println!("{}", mandant);
+    }
+
+    for uuid in uuids {
+        let mandant = Mandant::select_by_uuid(uuid, &pool).await;
         println!("{}", mandant);
     }
     Ok(())
