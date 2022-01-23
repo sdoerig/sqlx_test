@@ -25,8 +25,12 @@ async fn main() -> Result<(), sqlx::Error> {
     }
 
     for uuid in uuids {
-        let mandant = Mandant::select_by_uuid(uuid, &pool).await;
-        println!("{}", mandant);
+        let mut mandant = Mandant::select_by_uuid(uuid, &pool).await;
+        println!("{}", &mandant);
+        mandant.email = String::from("me@me.me");
+        if mandant.update_by_uuid(&pool).await {
+            println! {"Successfully updated: mandant {}", mandant};
+        }
     }
     Ok(())
 }
