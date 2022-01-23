@@ -7,7 +7,8 @@ const MANDANT_INSERT: &str = "INSERT INTO mandants (association_name, website, e
 VALUES ($1, $2, $3) returning id::text";
 
 const MANDANT_SELECT_BY_UUID: &str =
-    "SELECT association_name, website, email from mandants where id = $1::uuid";
+    "SELECT association_name, website, email from mandants 
+    where id = $1::uuid";
 
 const MANDANT_UPDATE_BY_UUID: &str =
     "UPDATE mandants set association_name = $1, website = $2, email = $3 
