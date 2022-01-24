@@ -6,8 +6,7 @@ use std::fmt;
 const MANDANT_INSERT: &str = "INSERT INTO mandants (association_name, website, email) 
 VALUES ($1, $2, $3) returning id::text";
 
-const MANDANT_SELECT_BY_UUID: &str =
-    "SELECT association_name, website, email from mandants 
+const MANDANT_SELECT_BY_UUID: &str = "SELECT association_name, website, email from mandants 
     where id = $1::uuid";
 
 const MANDANT_UPDATE_BY_UUID: &str =
@@ -58,21 +57,18 @@ impl Mandant {
         }
     }
 
-    pub async fn select_by_uuid(uuid: String, pool: &Pool<Postgres>) -> Self {
+    pub async fn select(uuid: String, pool: &Pool<Postgres>) -> Self {
         let select_result = sqlx::query_as::<_, SelectById>(MANDANT_SELECT_BY_UUID)
             .bind(&uuid)
             .fetch_one(pool)
             .await;
         match select_result {
             Ok(s) => Mandant::new(uuid, s.association_name, s.website, s.email),
-            Err(e) => {
-                print!("{}", e);
-                Mandant::new(uuid, String::from(""), String::from(""), String::from(""))
-            }
+            Err(_e) => Mandant::new(uuid, String::from(""), String::from(""), String::from("")),
         }
     }
 
-    pub async fn update_by_uuid(&mut self, pool: &Pool<Postgres>) -> bool {
+    pub async fn update(&mut self, pool: &Pool<Postgres>) -> bool {
         let update_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_UPDATE_BY_UUID)
             .bind(&self.association_name)
             .bind(&self.website)

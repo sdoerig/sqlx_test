@@ -5,7 +5,7 @@ use crate::db_services::mandants::Mandant;
 
 //#[actix_web::main]
 #[tokio::main]
-// or #[actix_web::main]
+//#[actix_web::main]
 async fn main() -> Result<(), sqlx::Error> {
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -25,10 +25,10 @@ async fn main() -> Result<(), sqlx::Error> {
     }
 
     for uuid in uuids {
-        let mut mandant = Mandant::select_by_uuid(uuid, &pool).await;
+        let mut mandant = Mandant::select(uuid, &pool).await;
         println!("{}", &mandant);
         mandant.email = String::from("me@me.me");
-        if mandant.update_by_uuid(&pool).await {
+        if mandant.update(&pool).await {
             println! {"Successfully updated: mandant {}", mandant};
         }
     }
