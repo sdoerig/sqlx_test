@@ -18,7 +18,7 @@ async fn main() -> Result<(), sqlx::Error> {
             format!("website {}", i),
             format!("email {}", i),
         );
-        mandant.insert(&pool).await;
+        mandant.persist(&pool).await;
         uuids.push(mandant.primary_key());
         println!("{}", mandant);
     }
@@ -27,7 +27,7 @@ async fn main() -> Result<(), sqlx::Error> {
         let mut mandant = Mandant::select(uuid, &pool).await;
         println!("{}", &mandant);
         mandant.email = String::from("me@me.me");
-        if mandant.update(&pool).await {
+        if mandant.persist(&pool).await {
             println! {"Successfully updated: mandant {}", mandant};
         }
     }

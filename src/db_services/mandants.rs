@@ -1,5 +1,6 @@
 use crate::db_services::db_objects::PrimaryKey;
-use sqlx::error::DatabaseError;
+
+use sha3::{Digest, Sha3_256};
 use sqlx::pool::Pool;
 use sqlx::postgres::Postgres;
 use sqlx::FromRow;
@@ -21,6 +22,7 @@ pub struct Mandant {
     pub association_name: String,
     pub website: String,
     pub email: String,
+    hash_value: String
     
 }
 
@@ -31,13 +33,21 @@ struct SelectById {
     pub email: String,
 }
 
+fn gen_sha3(tokens: Vec<&str>) -> String {
+    let mut hasher = Sha3_256::new();
+    hasher.update(tokens.join("___"));
+    hex::encode(hasher.finalize())
+}
+
 impl Mandant {
     pub fn new(association_name: String, website: String, email: String) -> Self {
+        let hash_value = gen_sha3(vec![&association_name, &website, &email]);
         Mandant {
             id: String::from(""),
             association_name,
             website,
             email,
+            hash_value
         }
     }
 
@@ -47,11 +57,13 @@ impl Mandant {
         website: String,
         email: String,
     ) -> Self {
+        let hash_value = gen_sha3(vec![&association_name, &website, &email]);
         Mandant {
             id,
             association_name,
             website,
             email,
+            hash_value
         }
     }
 
@@ -61,12 +73,18 @@ impl Mandant {
 
     pub async fn persist(&mut self, pool: &Pool<Postgres>) -> bool {
         if self.id.is_empty() {
-            return self.insert(pool).await
-        } 
+            return self.insert(pool).await;
+        } else {
+            let hash_value = gen_sha3(vec![&self.association_name, &self.website, &self.email]);
+            if self.hash_value != hash_value {
+                self.hash_value = hash_value;
+                return self.update(pool).await;
+            }
+        }
         false
     }
 
-    pub async fn insert(&mut self, pool: &Pool<Postgres>) -> bool{
+    async fn insert(&mut self, pool: &Pool<Postgres>) -> bool{
         let insert_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_INSERT)
             .bind(&self.association_name)
             .bind(&self.website)
@@ -77,7 +95,7 @@ impl Mandant {
         let mut success = true;
         match insert_result {
             Ok(p) => self.id = p.id,
-            Err(e) => success = false,
+            Err(_e) => success = false,
         }
         success
     }
@@ -98,7 +116,7 @@ impl Mandant {
         }
     }
 
-    pub async fn update(&mut self, pool: &Pool<Postgres>) -> bool {
+    async fn update(&mut self, pool: &Pool<Postgres>) -> bool {
         let update_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_UPDATE_BY_UUID)
             .bind(&self.association_name)
             .bind(&self.website)
@@ -123,7 +141,3 @@ impl fmt::Display for Mandant {
     }
 }
 
-
-fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
-}
