@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS mandants (
     id uuid DEFAULT gen_random_uuid(), 
     association_name varchar(256) NOT NULL,
     website varchar(256) NOT NULL,
-    email varchar(128) NOT NULL,
+    email varchar(128) NOT NULL UNIQUE,
     PRIMARY KEY (id)
 );
 
@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(128) NOT NULL,
     password_hash CHAR(64) NOT NULL,
     salt uuid NOT NULL,
+    UNIQUE(email),
+    UNIQUE(username),
     PRIMARY KEY(id),
     CONSTRAINT fk_mandants_id
       FOREIGN KEY(mandants_id) 

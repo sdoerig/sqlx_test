@@ -1,3 +1,5 @@
+use crate::db_services::db_objects::PrimaryKey;
+use sqlx::error::DatabaseError;
 use sqlx::pool::Pool;
 use sqlx::postgres::Postgres;
 use sqlx::FromRow;
@@ -15,15 +17,11 @@ const MANDANT_UPDATE_BY_UUID: &str =
 
 #[derive(Debug, FromRow)]
 pub struct Mandant {
-    pub id: String,
+    id: String,
     pub association_name: String,
     pub website: String,
     pub email: String,
-}
-
-#[derive(Debug, FromRow)]
-struct PrimaryKey {
-    pub id: String,
+    
 }
 
 #[derive(Debug, FromRow)]
@@ -34,7 +32,21 @@ struct SelectById {
 }
 
 impl Mandant {
-    pub fn new(id: String, association_name: String, website: String, email: String) -> Self {
+    pub fn new(association_name: String, website: String, email: String) -> Self {
+        Mandant {
+            id: String::from(""),
+            association_name,
+            website,
+            email,
+        }
+    }
+
+    fn map_query_result(
+        id: String,
+        association_name: String,
+        website: String,
+        email: String,
+    ) -> Self {
         Mandant {
             id,
             association_name,
@@ -43,7 +55,18 @@ impl Mandant {
         }
     }
 
-    pub async fn insert(&mut self, pool: &Pool<Postgres>) {
+    pub fn primary_key(&self) -> String {
+        self.id.clone()
+    }
+
+    pub async fn persist(&mut self, pool: &Pool<Postgres>) -> bool {
+        if self.id.is_empty() {
+            return self.insert(pool).await
+        } 
+        false
+    }
+
+    pub async fn insert(&mut self, pool: &Pool<Postgres>) -> bool{
         let insert_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_INSERT)
             .bind(&self.association_name)
             .bind(&self.website)
@@ -51,10 +74,12 @@ impl Mandant {
             .fetch_one(pool)
             .await;
         //sqlx::query_as::<DB, O>(INSERT_MANDANT);
-        self.id = match insert_result {
-            Ok(p) => p.id,
-            Err(_) => String::from(""),
+        let mut success = true;
+        match insert_result {
+            Ok(p) => self.id = p.id,
+            Err(e) => success = false,
         }
+        success
     }
 
     pub async fn select(uuid: String, pool: &Pool<Postgres>) -> Self {
@@ -63,8 +88,13 @@ impl Mandant {
             .fetch_one(pool)
             .await;
         match select_result {
-            Ok(s) => Mandant::new(uuid, s.association_name, s.website, s.email),
-            Err(_e) => Mandant::new(uuid, String::from(""), String::from(""), String::from("")),
+            Ok(s) => Mandant::map_query_result(uuid, s.association_name, s.website, s.email),
+            Err(_e) => Mandant::map_query_result(
+                uuid,
+                String::from(""),
+                String::from(""),
+                String::from(""),
+            ),
         }
     }
 
@@ -91,4 +121,9 @@ impl fmt::Display for Mandant {
             self.id, self.association_name, self.website, self.email
         )
     }
+}
+
+
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
 }
