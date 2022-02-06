@@ -1,4 +1,6 @@
+use db_services::db_objects::PersistenceStatus;
 use sqlx::postgres::PgPoolOptions;
+use std::time::SystemTime;
 mod db_services;
 
 use crate::db_services::mandants::Mandant;
@@ -13,22 +15,36 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
     let mut uuids: Vec<String> = Vec::new();
     for i in 0..5 {
+        let now = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            Ok(d) => d.as_nanos(),
+            Err(_) => 0_u128,
+        };
+
         let mut mandant = Mandant::new(
             format!("association {}", i),
             format!("website {}", i),
-            format!("email {}", i),
+            format!("email {} {}", i, now),
         );
         mandant.persist(&pool).await;
-        uuids.push(mandant.primary_key());
+        uuids.push(mandant.primary_key().to_string());
         println!("{}", mandant);
     }
 
-    for uuid in uuids {
+    for (count, uuid) in uuids.into_iter().enumerate() {
         let mut mandant = Mandant::select(uuid, &pool).await;
         println!("{}", &mandant);
-        mandant.email = String::from("me@me.me");
-        if mandant.persist(&pool).await {
-            println! {"Successfully updated: mandant {}", mandant};
+
+        if count % 2 == 0 {
+            mandant.email = format!("{} {}", String::from("me@me.me"), mandant.email);
+        }
+
+        mandant.persist(&pool).await;
+
+        match mandant.persistence_status() {
+            PersistenceStatus::New => println!("Nothing happpend"),
+            PersistenceStatus::Success => println!("Success"),
+            PersistenceStatus::Error(e) => println!("Error {}", e),
+            PersistenceStatus::Clean => println!("Content has not changed"),
         }
     }
     Ok(())

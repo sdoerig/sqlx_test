@@ -7,7 +7,7 @@ license = "AGPL-3.0 License"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sqlx = { version = "0.5", features = [ "runtime-actix-native-tls" , "postgres" ] }
+sqlx = { version = "0.5.10", features = [ "runtime-actix-native-tls" , "postgres" ] }
 actix-web = "4.0.0-beta.21"
 sha3 = "0.10.0"
-hex = "0.4"
+hex = "0.4.3"
