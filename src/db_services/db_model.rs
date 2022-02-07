@@ -1,5 +1,5 @@
-use crate::db_services::db_objects::{PersistenceStatus, PrimaryKey};
-
+use crate::db_services::db_objects::{DbEntity, PersistenceStatus, PrimaryKey};
+use async_trait::async_trait;
 use sha3::{Digest, Sha3_256};
 use sqlx::pool::Pool;
 use sqlx::postgres::Postgres;
@@ -91,37 +91,7 @@ impl Mandant {
         }
     }
 
-    /// Returing a reference of the primary key.
-    pub fn primary_key(&self) -> &str {
-        &self.id
-    }
-
-    /// Returning a reference of the persistence status.
-    pub fn persistence_status(&self) -> &PersistenceStatus {
-        &self.persistence_status
-    }
-
-    /// Persisting the tupel to the database. It will either perform
-    /// an insert or an update.
-    /// An insert is performed if the id (primary key) is empty and an update is performed
-    /// if the SHA3 value newly calculated is different.
-    pub async fn persist(&mut self, pool: &Pool<Postgres>) {
-        if self.id.is_empty() {
-            self.insert(pool).await;
-        } else {
-            let hash_value = gen_sha3(vec![&self.association_name, &self.website, &self.email]);
-            if self.hash_value != hash_value {
-                self.update(pool).await;
-                if self.persistence_status() == &PersistenceStatus::Success {
-                    self.hash_value = hash_value;
-                }
-            } else {
-                self.persistence_status = PersistenceStatus::Clean;
-            }
-        }
-    }
-
-    async fn insert(&mut self, pool: &Pool<Postgres>) -> bool {
+    async fn insert(&mut self, pool: &Pool<Postgres>) {
         let insert_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_INSERT)
             .bind(&self.association_name)
             .bind(&self.website)
@@ -129,36 +99,12 @@ impl Mandant {
             .fetch_one(pool)
             .await;
         //sqlx::query_as::<DB, O>(INSERT_MANDANT);
-        let mut success = true;
         match insert_result {
             Ok(p) => {
                 self.id = p.id;
+                self.persistence_status = PersistenceStatus::Success;
             }
-            Err(_e) => success = false,
-        }
-        success
-    }
-
-    pub async fn select(uuid: String, pool: &Pool<Postgres>) -> Self {
-        let select_result = sqlx::query_as::<_, SelectById>(MANDANT_SELECT_BY_UUID)
-            .bind(&uuid)
-            .fetch_one(pool)
-            .await;
-        match select_result {
-            Ok(s) => Mandant::map_query_result(
-                uuid,
-                s.association_name,
-                s.website,
-                s.email,
-                PersistenceStatus::Success,
-            ),
-            Err(e) => Mandant::map_query_result(
-                uuid,
-                String::from(""),
-                String::from(""),
-                String::from(""),
-                PersistenceStatus::Error(format!("{}", e)),
-            ),
+            Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
         }
     }
 
@@ -185,4 +131,65 @@ impl fmt::Display for Mandant {
             self.id, self.association_name, self.website, self.email
         )
     }
+}
+
+#[async_trait]
+impl DbEntity for Mandant {
+    fn primary_key(&self) -> &str {
+        &self.id
+    }
+
+    fn persistence_status(&self) -> &PersistenceStatus {
+        &self.persistence_status
+    }
+
+    async fn persist(&mut self, pool: &Pool<Postgres>) {
+        if self.id.is_empty() {
+            self.insert(pool).await;
+        } else {
+            let hash_value = gen_sha3(vec![&self.association_name, &self.website, &self.email]);
+            if self.hash_value != hash_value {
+                self.update(pool).await;
+                if self.persistence_status() == &PersistenceStatus::Success {
+                    self.hash_value = hash_value;
+                }
+            } else {
+                self.persistence_status = PersistenceStatus::Clean;
+            }
+        }
+    }
+
+    async fn select(uuid: String, pool: &Pool<Postgres>) -> Self {
+        let select_result = sqlx::query_as::<_, SelectById>(MANDANT_SELECT_BY_UUID)
+            .bind(&uuid)
+            .fetch_one(pool)
+            .await;
+        match select_result {
+            Ok(s) => Mandant::map_query_result(
+                uuid,
+                s.association_name,
+                s.website,
+                s.email,
+                PersistenceStatus::Success,
+            ),
+            Err(e) => Mandant::map_query_result(
+                uuid,
+                String::from(""),
+                String::from(""),
+                String::from(""),
+                PersistenceStatus::Error(format!("{}", e)),
+            ),
+        }
+    }
+}
+
+pub struct User {
+    id: String, 
+    pub mandants_id: String, 
+    pub locked: bool,
+    pub username: String, 
+    pub lastname: String, 
+    pub email: String,
+    pub password_hash: String, 
+    salt: String
 }

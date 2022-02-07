@@ -1,9 +1,9 @@
-use db_services::db_objects::PersistenceStatus;
+use db_services::db_objects::{DbEntity, PersistenceStatus};
 use sqlx::postgres::PgPoolOptions;
 use std::time::SystemTime;
 mod db_services;
 
-use crate::db_services::mandants::Mandant;
+use crate::db_services::db_model::Mandant;
 
 //#[actix_web::main]
 //#[tokio::main]

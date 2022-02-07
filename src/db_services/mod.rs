@@ -1,2 +1,2 @@
 pub mod db_objects;
-pub mod mandants;
+pub mod db_model;
