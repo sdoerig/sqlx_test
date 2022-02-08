@@ -13,7 +13,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .max_connections(5)
         .connect("postgres://doerig:doerig@127.0.2.15/nestbox")
         .await?;
-    let mut uuids: Vec<String> = Vec::new();
+    let mut uuids: Vec<Mandant> = Vec::new();
     for i in 0..5 {
         let now = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
             Ok(d) => d.as_nanos(),
@@ -26,12 +26,12 @@ async fn main() -> Result<(), sqlx::Error> {
             format!("email {} {}", i, now),
         );
         mandant.persist(&pool).await;
-        uuids.push(mandant.primary_key().to_string());
-        println!("{}", mandant);
+        uuids.push(mandant);
+        //println!("{}", mandant);
     }
 
-    for (count, uuid) in uuids.into_iter().enumerate() {
-        let mut mandant = Mandant::select(uuid, &pool).await;
+    for (count, mandant) in uuids.into_iter().enumerate() {
+        let mut mandant = Mandant::select(mandant.primary_key(), &pool).await;
         println!("{}", &mandant);
 
         if count % 2 == 0 {
@@ -42,7 +42,6 @@ async fn main() -> Result<(), sqlx::Error> {
 
         match mandant.persistence_status() {
             PersistenceStatus::New => println!("Nothing happpend"),
-            PersistenceStatus::Success => println!("Success"),
             PersistenceStatus::Error(e) => println!("Error {}", e),
             PersistenceStatus::Clean => println!("Content has not changed"),
         }

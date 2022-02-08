@@ -102,7 +102,7 @@ impl Mandant {
         match insert_result {
             Ok(p) => {
                 self.id = p.id;
-                self.persistence_status = PersistenceStatus::Success;
+                self.persistence_status = PersistenceStatus::Clean;
             }
             Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
         }
@@ -117,7 +117,7 @@ impl Mandant {
             .fetch_one(pool)
             .await;
         match update_result {
-            Ok(_s) => self.persistence_status = PersistenceStatus::Success,
+            Ok(_s) => self.persistence_status = PersistenceStatus::Clean,
             Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
         }
     }
@@ -150,7 +150,7 @@ impl DbEntity for Mandant {
             let hash_value = gen_sha3(vec![&self.association_name, &self.website, &self.email]);
             if self.hash_value != hash_value {
                 self.update(pool).await;
-                if self.persistence_status() == &PersistenceStatus::Success {
+                if self.persistence_status() == &PersistenceStatus::Clean {
                     self.hash_value = hash_value;
                 }
             } else {
@@ -159,21 +159,21 @@ impl DbEntity for Mandant {
         }
     }
 
-    async fn select(uuid: String, pool: &Pool<Postgres>) -> Self {
+    async fn select(uuid: &str, pool: &Pool<Postgres>) -> Self {
         let select_result = sqlx::query_as::<_, SelectById>(MANDANT_SELECT_BY_UUID)
             .bind(&uuid)
             .fetch_one(pool)
             .await;
         match select_result {
             Ok(s) => Mandant::map_query_result(
-                uuid,
+                uuid.to_string(),
                 s.association_name,
                 s.website,
                 s.email,
-                PersistenceStatus::Success,
+                PersistenceStatus::Clean,
             ),
             Err(e) => Mandant::map_query_result(
-                uuid,
+                uuid.to_string(),
                 String::from(""),
                 String::from(""),
                 String::from(""),
@@ -184,12 +184,49 @@ impl DbEntity for Mandant {
 }
 
 pub struct User {
-    id: String, 
-    pub mandants_id: String, 
+    id: String,
+    pub mandants_id: String,
     pub locked: bool,
-    pub username: String, 
-    pub lastname: String, 
+    pub username: String,
+    pub lastname: String,
     pub email: String,
-    pub password_hash: String, 
-    salt: String
+    pub password_hash: String,
+    salt: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::postgres::PgPoolOptions;
+
+    const DB_URL: &str = "postgres://doerig:doerig@127.0.2.15/nestbox";
+    const MANDANT_UUID: &str = "e451186c-0dbe-4496-93d6-aa14cac9be31";
+
+    #[actix_rt::test]
+    async fn create_mandant() {
+        let mandant = Mandant::new(
+            "association_name".to_string(),
+            "website".to_string(),
+            "email".to_string(),
+        );
+        assert!(mandant.persistence_status() == &PersistenceStatus::New);
+    }
+
+    #[actix_rt::test]
+    async fn select_mandant() {
+        if let Ok(pool) = &get_pool().await {
+            let mandant = Mandant::select(MANDANT_UUID, pool).await;
+            assert!(mandant.persistence_status() == &PersistenceStatus::Clean)
+        } else {
+            panic!("Could not get PostgreSQL pool...")
+        }
+    }
+
+    async fn get_pool() -> Result<Pool<Postgres>, sqlx::Error> {
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .connect(DB_URL)
+            .await;
+        pool
+    }
 }

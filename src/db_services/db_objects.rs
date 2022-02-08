@@ -16,16 +16,13 @@ pub enum PersistenceStatus {
     /// Clean means the record is persisted but its content has not
     /// been modified by the application.
     Clean,
-    /// Success means teh record has successfully been persisted
-    /// in the database.
-    Success,
     /// Error, something when wrong - the string contains a user
     /// readable description of the error.
     Error(String),
 }
 
 #[async_trait]
-
+/// Describes the minimal interface ot a Db entity.
 pub trait DbEntity {
     /// Returing a reference of the primary key.
     fn primary_key(&self) -> &str;
@@ -38,5 +35,5 @@ pub trait DbEntity {
     /// An insert is performed if the id (primary key) is empty and an update is performed
     /// if the SHA3 value newly calculated is different.
     async fn persist(&mut self, pool: &Pool<Postgres>);
-    async fn select(uuid: String, pool: &Pool<Postgres>) -> Self;
+    async fn select(uuid: &str, pool: &Pool<Postgres>) -> Self;
 }
