@@ -35,7 +35,8 @@ async fn main() -> Result<(), sqlx::Error> {
         println!("{}", &mandant);
 
         if count % 2 == 0 {
-            mandant.email = format!("{} {}", String::from("me@me.me"), mandant.email);
+            *mandant.email() = format!("{} {}", String::from("me@me.me"), mandant.email());
+            *mandant.association_name() = "gaggger".to_string();
         }
 
         mandant.persist(&pool).await;
