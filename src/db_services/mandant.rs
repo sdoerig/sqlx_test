@@ -1,9 +1,9 @@
-use crate::db_services::db_objects::{DbEntity, PersistenceStatus, PrimaryKey};
+use crate::db_services::db_objects::{gen_sha3, DbEntity, PersistenceStatus, PrimaryKey};
 use async_trait::async_trait;
-use sha3::{Digest, Sha3_256};
 use sqlx::pool::Pool;
 use sqlx::postgres::Postgres;
 use sqlx::FromRow;
+use std::default::Default;
 use std::fmt;
 
 /// SQL: Prepared statement used when inserting a record into the table mandants.
@@ -43,19 +43,12 @@ pub struct Mandant {
     persistence_status: PersistenceStatus,
 }
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Default)]
 /// Mapping struct used for a select by UUID (id)
 struct SelectById {
     pub association_name: String,
     pub website: String,
     pub email: String,
-}
-
-/// Generating a SHA3 token over a vector of string references.
-fn gen_sha3(tokens: Vec<&str>) -> String {
-    let mut hasher = Sha3_256::new();
-    hasher.update(tokens.join("___"));
-    hex::encode(hasher.finalize())
 }
 
 impl Mandant {
@@ -87,17 +80,19 @@ impl Mandant {
     /// Mapping a query result and returing a instance of Mandant.
     fn map_query_result(
         id: String,
-        association_name: String,
-        website: String,
-        email: String,
+        select_res: SelectById,
         persistence_status: PersistenceStatus,
     ) -> Self {
-        let hash_value = gen_sha3(vec![&association_name, &website, &email]);
+        let hash_value = gen_sha3(vec![
+            &select_res.association_name,
+            &select_res.website,
+            &select_res.email,
+        ]);
         Mandant {
             id,
-            association_name,
-            website,
-            email,
+            association_name: select_res.association_name,
+            website: select_res.website,
+            email: select_res.email,
             hash_value,
             persistence_status,
         }
@@ -177,33 +172,14 @@ impl DbEntity for Mandant {
             .fetch_one(pool)
             .await;
         match select_result {
-            Ok(s) => Mandant::map_query_result(
-                uuid.to_string(),
-                s.association_name,
-                s.website,
-                s.email,
-                PersistenceStatus::Clean,
-            ),
+            Ok(s) => Mandant::map_query_result(uuid.to_string(), s, PersistenceStatus::Clean),
             Err(e) => Mandant::map_query_result(
                 uuid.to_string(),
-                String::from(""),
-                String::from(""),
-                String::from(""),
+                SelectById::default(),
                 PersistenceStatus::Error(format!("{}", e)),
             ),
         }
     }
-}
-
-pub struct User {
-    id: String,
-    pub mandants_id: String,
-    pub locked: bool,
-    pub username: String,
-    pub lastname: String,
-    pub email: String,
-    pub password_hash: String,
-    salt: String,
 }
 
 #[cfg(test)]
@@ -251,8 +227,8 @@ mod tests {
         );
         // modificate
         for [association, website, email] in [
-            [ASSOCIATION_NAME_1, WEBSITE_NAME_1, EMAIL_NAME_1],
             [ASSOCIATION_NAME_2, WEBSITE_NAME_2, EMAIL_NAME_2],
+            [ASSOCIATION_NAME_1, WEBSITE_NAME_1, EMAIL_NAME_1],
         ] {
             *mandant.association_name() = association.to_string();
             *mandant.website() = website.to_string();
@@ -277,7 +253,6 @@ mod tests {
                 email
             );
         }
-        
     }
 
     #[actix_rt::test]
@@ -295,8 +270,8 @@ mod tests {
         if let Ok(pool) = &get_pool().await {
             let mandant = Mandant::select(MANDANT_INVALID_UUID, pool).await;
             match mandant.persistence_status() {
-                PersistenceStatus::New => assert!(false, "Record can not be New"),
-                PersistenceStatus::Clean => assert!(false, "Record can not be Clean"),
+                PersistenceStatus::New => panic!("Record can not be New"),
+                PersistenceStatus::Clean => panic!("Record can not be Clean"),
                 PersistenceStatus::Error(_) => assert!(true),
             };
 

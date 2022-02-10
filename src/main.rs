@@ -3,7 +3,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::time::SystemTime;
 mod db_services;
 
-use crate::db_services::db_model::Mandant;
+use crate::db_services::mandant::Mandant;
 
 //#[actix_web::main]
 //#[tokio::main]
