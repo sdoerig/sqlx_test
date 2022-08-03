@@ -15,12 +15,12 @@ const USER_INSERT: &str = "insert into users (mandants_id, locked, username,
     values ($1, $2, $3, $4, $5, $6, crypt($7, gen_salt('md5'))) returning id::text;";
 
 const USER_IS_LOGGED_IN: &str = "select 
-* 
+  * 
 from 
-users 
+  users 
 where 
-(password_hash = crypt('password', password_hash)) = true and 
-username = 'tracy';";
+  (password_hash = crypt('password', password_hash)) = true and 
+  username = 'tracy';";
 
 pub struct User {
     id: String,
