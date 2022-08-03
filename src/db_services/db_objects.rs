@@ -37,6 +37,8 @@ pub trait DbEntity {
     /// if the SHA3 value newly calculated is different.
     async fn persist(&mut self, pool: &Pool<Postgres>);
     async fn select(uuid: &str, pool: &Pool<Postgres>) -> Self;
+    async fn insert(&mut self, pool: &Pool<Postgres>);
+    async fn update(&mut self, pool: &Pool<Postgres>);
 }
 
 /// Generating a SHA3 token over a vector of string references.

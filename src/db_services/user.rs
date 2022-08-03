@@ -7,21 +7,29 @@ use sqlx::FromRow;
 use std::default::Default;
 use std::fmt;
 
+use super::db_objects::gen_sha3;
+use super::mandant::Mandant;
+
+const USER_INSERT: &str = "insert into users (mandants_id, locked, username,
+    firstname, lastname, email, password_hash ) 
+    values ($1, $2, $3, $4, $5, $6, crypt($7, gen_salt('md5')));";
+
 pub struct User {
     id: String,
-    mandants_id: String,
+    mandant_id: String,
     locked: bool,
     username: String,
+    firstname: String,
     lastname: String,
     email: String,
     password_hash: String,
-    salt: String,
+    hash_value: String,
 }
 
 #[async_trait]
 impl DbEntity for User {
     fn primary_key(&self) -> &str {
-        todo!()
+        &self.id
     }
 
     fn persistence_status(&self) -> &PersistenceStatus {
@@ -29,10 +37,50 @@ impl DbEntity for User {
     }
 
     async fn persist(&mut self, pool: &Pool<Postgres>) {
-        todo!()
+        if self.id.is_empty() {}
     }
 
     async fn select(uuid: &str, pool: &Pool<Postgres>) -> Self {
         todo!()
+    }
+
+    async fn insert(&mut self, pool: &Pool<Postgres>) {
+        todo!()
+    }
+
+    async fn update(&mut self, pool: &Pool<Postgres>) {
+        todo!()
+    }
+}
+
+impl User {
+    pub fn new(
+        mandant: &Mandant,
+        username: String,
+        firstname: String,
+        lastname: String,
+        email: String,
+        password_hash: String,
+    ) -> Self {
+        let mandant_id = mandant.primary_key().to_string();
+        let hash_value = gen_sha3(vec![
+            &mandant_id,
+            &username,
+            &firstname,
+            &lastname,
+            &email,
+            &password_hash,
+        ]);
+        User {
+            id: String::from(""),
+            mandant_id,
+            username,
+            locked: false,
+            firstname,
+            lastname,
+            email,
+            password_hash,
+            hash_value,
+        }
     }
 }

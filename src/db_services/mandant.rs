@@ -97,37 +97,6 @@ impl Mandant {
             persistence_status,
         }
     }
-
-    async fn insert(&mut self, pool: &Pool<Postgres>) {
-        let insert_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_INSERT)
-            .bind(&self.association_name)
-            .bind(&self.website)
-            .bind(&self.email)
-            .fetch_one(pool)
-            .await;
-        //sqlx::query_as::<DB, O>(INSERT_MANDANT);
-        match insert_result {
-            Ok(p) => {
-                self.id = p.id;
-                self.persistence_status = PersistenceStatus::Clean;
-            }
-            Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
-        }
-    }
-
-    async fn update(&mut self, pool: &Pool<Postgres>) {
-        let update_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_UPDATE_BY_UUID)
-            .bind(&self.association_name)
-            .bind(&self.website)
-            .bind(&self.email)
-            .bind(&self.id)
-            .fetch_one(pool)
-            .await;
-        match update_result {
-            Ok(_s) => self.persistence_status = PersistenceStatus::Clean,
-            Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
-        }
-    }
 }
 
 impl fmt::Display for Mandant {
@@ -178,6 +147,37 @@ impl DbEntity for Mandant {
                 SelectById::default(),
                 PersistenceStatus::Error(format!("{}", e)),
             ),
+        }
+    }
+
+    async fn insert(&mut self, pool: &Pool<Postgres>) {
+        let insert_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_INSERT)
+            .bind(&self.association_name)
+            .bind(&self.website)
+            .bind(&self.email)
+            .fetch_one(pool)
+            .await;
+        //sqlx::query_as::<DB, O>(INSERT_MANDANT);
+        match insert_result {
+            Ok(p) => {
+                self.id = p.id;
+                self.persistence_status = PersistenceStatus::Clean;
+            }
+            Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
+        }
+    }
+
+    async fn update(&mut self, pool: &Pool<Postgres>) {
+        let update_result = sqlx::query_as::<_, PrimaryKey>(MANDANT_UPDATE_BY_UUID)
+            .bind(&self.association_name)
+            .bind(&self.website)
+            .bind(&self.email)
+            .bind(&self.id)
+            .fetch_one(pool)
+            .await;
+        match update_result {
+            Ok(_s) => self.persistence_status = PersistenceStatus::Clean,
+            Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
         }
     }
 }
