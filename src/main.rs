@@ -1,9 +1,15 @@
-use db_services::db_objects::{DbEntity, PersistenceStatus};
-use sqlx::postgres::PgPoolOptions;
-use std::time::SystemTime;
+use db_services::{
+    db_objects::{DbEntity, PersistenceStatus},
+    user::User,
+};
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use std::{fmt::format, time::SystemTime};
 mod db_services;
 
 use crate::db_services::mandant::Mandant;
+
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 
 //#[actix_web::main]
 //#[tokio::main]
@@ -42,10 +48,43 @@ async fn main() -> Result<(), sqlx::Error> {
         mandant.persist(&pool).await;
 
         match mandant.persistence_status() {
-            PersistenceStatus::New => println!("Nothing happpend"),
+            PersistenceStatus::New => {
+                println!("Nothing happpend");
+            }
             PersistenceStatus::Error(e) => println!("Error {}", e),
-            PersistenceStatus::Clean => println!("Content has not changed"),
+            PersistenceStatus::Clean => {
+                println!("Content has not changed");
+                add_user(&mandant, &pool).await;
+            }
         }
     }
     Ok(())
+}
+
+async fn add_user(mandant: &Mandant, pool: &Pool<Postgres>) {
+    println!("Adding users...");
+    for i in 0..5 {
+        let mut user = User::new(
+            mandant,
+            random_str(20),
+            format!("firstname {}", i),
+            format!("lastname {}", i),
+            random_str(32),
+            String::from("password"),
+        );
+        user.persist(pool).await;
+        match user.persistence_status() {
+            PersistenceStatus::New => println!("User new"),
+            PersistenceStatus::Clean => println!("User clean"),
+            PersistenceStatus::Error(e) => println!("Error {}", e),
+        }
+    }
+}
+
+fn random_str(len: usize) -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
 }

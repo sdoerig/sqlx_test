@@ -12,7 +12,7 @@ use super::mandant::Mandant;
 
 const USER_INSERT: &str = "insert into users (mandants_id, locked, username,
     firstname, lastname, email, password_hash ) 
-    values ($1, $2, $3, $4, $5, $6, crypt($7, gen_salt('md5'))) returning id::text;";
+    values ($1::uuid, $2, $3, $4, $5, $6, crypt($7, gen_salt('md5'))) returning id::text;";
 
 const USER_IS_LOGGED_IN: &str = "select 
   * 
@@ -31,6 +31,7 @@ pub struct User {
     lastname: String,
     email: String,
     password_hash: String,
+    persistence_status: PersistenceStatus,
     hash_value: String,
 }
 
@@ -41,11 +42,13 @@ impl DbEntity for User {
     }
 
     fn persistence_status(&self) -> &PersistenceStatus {
-        todo!()
+        &self.persistence_status
     }
 
     async fn persist(&mut self, pool: &Pool<Postgres>) {
-        if self.id.is_empty() {}
+        if self.id.is_empty() {
+            self.insert(pool).await;
+        }
     }
 
     async fn select(uuid: &str, pool: &Pool<Postgres>) -> Self {
@@ -53,7 +56,26 @@ impl DbEntity for User {
     }
 
     async fn insert(&mut self, pool: &Pool<Postgres>) {
-        todo!()
+        //, , ,
+        //, , ,
+        let insert_result = sqlx::query_as::<_, PrimaryKey>(USER_INSERT)
+            .bind(&self.mandant_id)
+            .bind(&self.locked)
+            .bind(&self.username)
+            .bind(&self.firstname)
+            .bind(&self.lastname)
+            .bind(&self.email)
+            .bind(&self.password_hash)
+            .fetch_one(pool)
+            .await;
+        //sqlx::query_as::<DB, O>(INSERT_MANDANT);
+        match insert_result {
+            Ok(p) => {
+                self.id = p.id;
+                self.persistence_status = PersistenceStatus::Clean;
+            }
+            Err(e) => self.persistence_status = PersistenceStatus::Error(format!("{}", e)),
+        }
     }
 
     async fn update(&mut self, pool: &Pool<Postgres>) {
@@ -88,6 +110,7 @@ impl User {
             lastname,
             email,
             password_hash,
+            persistence_status: PersistenceStatus::New,
             hash_value,
         }
     }
