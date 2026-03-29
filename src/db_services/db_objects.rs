@@ -3,6 +3,7 @@ use sha3::{Digest, Sha3_256};
 use sqlx::pool::Pool;
 use sqlx::postgres::Postgres;
 use sqlx::FromRow;
+use std::fmt::Display;
 
 #[derive(Debug, FromRow)]
 pub struct PrimaryKey {
@@ -21,6 +22,16 @@ pub enum PersistenceStatus {
     /// readable description of the error.
     Error(String),
 }
+impl std::fmt::Display for PersistenceStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PersistenceStatus::New => write!(f, "New"),
+            PersistenceStatus::Clean => write!(f, "Clean"),
+            PersistenceStatus::Error(s) => write!(f, "{:?}", s),
+        }
+    }
+}
+
 
 #[async_trait]
 /// Describes the minimal interface ot a Db entity.

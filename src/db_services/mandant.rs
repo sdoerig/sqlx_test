@@ -65,15 +65,18 @@ impl Mandant {
         }
     }
 
+    #[allow(dead_code)]
     pub fn association_name(&mut self) -> &mut String {
         &mut self.association_name
     }
     /// Website of the organisation-
 
+    #[allow(dead_code)]
     pub fn website(&mut self) -> &mut String {
         &mut self.website
     }
     /// Official email address of the organisation
+    #[allow(dead_code)]
     pub fn email(&mut self) -> &mut String {
         &mut self.email
     }
@@ -208,19 +211,19 @@ mod tests {
         // test initial assigment
         assert!(mandant.persistence_status() == &PersistenceStatus::New);
         assert!(
-            mandant.association_name() == ASSOCIATION_NAME_1,
+            *mandant.association_name() == ASSOCIATION_NAME_1,
             "association_name is {} expected {}",
             mandant.association_name(),
             ASSOCIATION_NAME_1
         );
         assert!(
-            mandant.website() == WEBSITE_NAME_1,
+            *mandant.website() == WEBSITE_NAME_1,
             "website is {} expected {}",
             mandant.website(),
             WEBSITE_NAME_1
         );
         assert!(
-            mandant.email() == EMAIL_NAME_1,
+            *mandant.email() == EMAIL_NAME_1,
             "email is {} expected {}",
             mandant.email(),
             EMAIL_NAME_1
@@ -253,6 +256,23 @@ mod tests {
                 email
             );
         }
+    }
+
+    #[actix_rt::test]
+    async fn insert_valid_mandant() {
+        let mut mandant = Mandant::new(
+            ASSOCIATION_NAME_1.to_string(),
+            WEBSITE_NAME_1.to_string(),
+            EMAIL_NAME_1.to_string(),
+        );
+        
+        if let Ok(pool) = &get_pool().await {
+            mandant.persist(pool).await;
+            
+        } else {
+            panic!("Could not get PostgreSQL pool...")
+        }
+        assert!(mandant.persistence_status() == &PersistenceStatus::Clean, "{}", mandant.persistence_status);
     }
 
     #[actix_rt::test]
